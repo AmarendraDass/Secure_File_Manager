@@ -1,5 +1,7 @@
 from pathlib import Path
+import io
 import shutil
+import zipfile
 
 
 # Categories based on detected file type
@@ -10,11 +12,24 @@ TYPE_FOLDERS = {
     "BMP": "Images",
     "WEBP": "Images",
     "PDF": "Documents",
+    "DOCX": "Documents",
+    "DOCM": "Documents",
+    "PPTX": "Presentations",
+    "PPTM": "Presentations",
+    "XLSX": "Spreadsheets",
+    "XLSM": "Spreadsheets",
     "ZIP": "Archives",
+    "7Z": "Archives",
+    "TAR": "Archives",
+    "GZ": "Archives",
     "EXE": "Executables",
     "ELF": "Linux_Executables",
+    "LNK": "Shortcuts",
     "MP3": "Audio",
     "WAV": "Audio",
+    "FLAC": "Audio",
+    "OGG": "Audio",
+    "MP4": "Videos",
 }
 
 
@@ -46,13 +61,13 @@ EXTENSION_FOLDERS = {
     ".rar": "Archives",
     ".tar": "Archives",
     ".gz": "Archives",
+    ".zip": "Archives",
 }
 
 
 def choose_category(result):
     """Choose a destination folder for a scanned file."""
-
-    status = result["status"]
+    status = result.get("status")
 
     if status in (
         "MISMATCH",
@@ -61,19 +76,19 @@ def choose_category(result):
     ):
         return "Review_Mismatches"
 
-    actual_type = result["actual_type"]
+    actual_type = result.get("actual_type")
 
     if actual_type in TYPE_FOLDERS:
         return TYPE_FOLDERS[actual_type]
 
-    extension = result["path"].suffix.lower()
+    path = Path(result["path"])
+    extension = path.suffix.lower()
 
     return EXTENSION_FOLDERS.get(extension, "Others")
 
 
 def unique_destination(destination):
     """Avoid overwriting files with the same name."""
-
     if not destination.exists():
         return destination
 
@@ -92,7 +107,6 @@ def unique_destination(destination):
 
 def organize_scan_results(results, output_folder):
     """Copy scanned files into their destination categories."""
-
     output_folder = Path(output_folder).expanduser().resolve()
 
     source_roots = {
@@ -113,7 +127,6 @@ def organize_scan_results(results, output_folder):
 
     for result in results:
         source = Path(result["path"])
-
         category = choose_category(result)
 
         category_folder = output_folder / category
@@ -124,9 +137,45 @@ def organize_scan_results(results, output_folder):
         )
 
         shutil.copy2(source, destination)
-
-        print(f"Copied: {source.name} -> {category}/")
-
         copied += 1
 
     return copied
+
+
+def create_organized_zip(results, output_zip_path=None):
+    """
+    Bundle scanned files into a categorized ZIP archive.
+    If output_zip_path is None, returns an in-memory io.BytesIO object.
+    """
+    buffer = io.BytesIO() if output_zip_path is None else None
+    target = output_zip_path if output_zip_path is not None else buffer
+
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as archive:
+        name_counts = {}
+
+        for result in results:
+            source = Path(result["path"])
+            if not source.is_file():
+                continue
+
+            category = choose_category(result)
+            base_name = source.name
+
+            key = (category, base_name)
+            count = name_counts.get(key, 0)
+            if count > 0:
+                stem = Path(base_name).stem
+                suffix = Path(base_name).suffix
+                archive_filename = f"{stem}_{count}{suffix}"
+            else:
+                archive_filename = base_name
+
+            name_counts[key] = count + 1
+            archive_path = f"{category}/{archive_filename}"
+            archive.write(source, arcname=archive_path)
+
+    if buffer is not None:
+        buffer.seek(0)
+        return buffer
+
+    return output_zip_path
