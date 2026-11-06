@@ -1,95 +1,97 @@
-# 🛡️ SecureShield Pro | Enterprise Cloud File Manager & Security Hub
+# Secure File Manager
 
-> **Web-Based File Operations • In-Browser Editor & Previews • Deep Content Inspection • Trojan Anti-Spoofing • SHA-256 Integrity Guardian**
+A browser-based file workspace for learning about file metadata and integrity. Users create an account, upload files, review MIME-type and extension information, and record SHA-256 checksums. File-list, download, and delete operations require a signed-in account and are restricted to that account's records.
 
-SecureShield Pro is a full-featured, web-based file manager and security suite built with **Streamlit**, **Pandas**, and **Altair**. It empowers users to upload, manage, edit, preview, organize, extract, and compress files through a modern, responsive browser interface—backed by deep binary magic-byte inspection and cryptographic integrity monitoring.
+## Important security limits
 
----
+- Accounts isolate file records, but uploaded files are **not encrypted at rest**. Do not upload sensitive or regulated data.
+- SHA-256 helps detect changes; it is not encryption, malware scanning, or proof of a file's safety.
+- Registration is open and does not include email verification or password recovery.
+- The app enforces a 4 MiB upload limit by default so an upload can fit within Vercel Functions' request-body limit. Raise it only when using a host with a higher request limit.
+- Put a public deployment behind HTTPS, configure host restrictions and a reverse-proxy request-body limit, use encrypted persistent storage, and add platform-level rate limiting for account endpoints before inviting users.
 
-## 🌟 Web File Operations Suite
+## Local development (Windows PowerShell)
 
-SecureShield Pro was engineered so users never feel a lack of core file operations after uploading:
+Use Python 3.12. If an old virtual environment refers to a Python installation that has been removed, create a new environment rather than trying to repair that one in place:
 
-### 1. 📁 Explorer & Ingestion
-- **Drag-and-Drop Uploader**: Upload any combination of documents, images, code, media, or archives simultaneously.
-- **Persistent Workspace**: Files remain active in your workspace across actions and tabs.
-- **✨ 1-Click Demo Loader**: Instant button in the sidebar to populate the workspace with test files (including a disguised Trojan payload to demonstrate security features).
-- **Dual View Modes**:
-  - **List View**: Dense, informative tabular view with sortable columns, security status badges, sizes, and timestamps.
-  - **Grid View**: Card tiles featuring category icons, quick info, and 1-click Download & Delete buttons.
-- **➕ In-Browser File Creation**: Create and initialize new text, code, or markdown files directly from the web interface.
-
-### 2. ⚡ In-Browser File Operations & Editor
-- **👁️ Rich Previews**:
-  - **Images**: Direct rendering for `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.bmp` with file dimensions.
-  - **Audio & Video**: Native web players for `.mp3`, `.wav`, `.ogg`, `.flac`, `.mp4`, `.mov`.
-  - **Text & Code**: Formatted code view for Python, JSON, Markdown, CSV, and plain text.
-- **✏️ In-Browser Text & Code Editor**: Edit scripts, config files, notes, or data files in a full-height editor and save modifications with 1 click.
-- **🏷️ Rename & Duplicate**: Rename files safely with extension checks or generate duplicates (`_copy`).
-- **📦 ZIP Extractor**: Unpack `.zip` archives directly into workspace folders with 1 click.
-- **📥 Individual & Batch Download**: Download any individual file or click **"Download All as ZIP"**.
-
-### 3. 🚨 Deep Security & Anti-Spoofing Defense
-- **Magic-Byte Inspection**: Reads raw binary headers to determine true file types independently of filenames.
-- **Trojan & Malware Disguise Alerts**: Flags dangerous extension mismatches (e.g., an executable `.exe` disguised as an `.png` invoice image) with high-visibility advisory banners.
-- **🔬 Forensic Hex & Hash Inspector**: Interactive forensic hex dump with selectable byte buffer (16 to 256 bytes) and cryptographic SHA-256 digest computation.
-
-### 4. 🗂️ Smart Content-Aware Organizer
-- Automatically categorizes files into verified taxonomy groups:
-  - `Images/`
-  - `Documents/`
-  - `Archives/`
-  - `Audio/` & `Videos/`
-  - `Executables/`
-  - `Code_and_Data/`
-  - `Review_Mismatches/` (quarantine for spoofed or suspicious files)
-- **⚡ 1-Click Organized ZIP Archive**: Generates and downloads a single `.zip` file with all files arranged into their respective category folders.
-
-### 5. 🔐 Cryptographic Integrity Guardian (SHA-256)
-- **Immutable Baselines**: Capture a cryptographic snapshot manifest (`baseline.json`).
-- **Differential Tamper Detection**:
-  - `✔ Intact`: Hash verified against baseline.
-  - `🚨 Tampered (Modified)`: Real-time alert with side-by-side hash comparison showing exact modifications.
-  - `➕ Added`: Identifies files introduced after snapshot.
-  - `➖ Deleted`: Identifies files missing from workspace.
-- **Export Baseline**: Download baseline JSON for offline audit trails.
-
-### 6. 📊 Visual Telemetry & Storage Analytics
-- **Format Distribution**: Interactive Altair bar chart of detected binary signatures.
-- **Security Verdicts**: Donut chart visualizing safe vs spoofed vs unknown files.
-- **Storage Consumption**: Breakdown of disk usage (in KB/MB) by category.
-
----
-
-## 🚀 Running the Web Application
-
-### Prerequisites
-Make sure Python 3.10+ is installed on your computer.
-
-### Installation
-Open your terminal in the project directory:
-```bash
-cd "D:\Python Coding\python file manager"
-pip install -r requirements.txt
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-### Start Web Server
-```bash
-streamlit run app.py
-```
-Your default browser will automatically open to `http://localhost:8501`.
+Replace `SECRET_KEY` in `.env` with a unique random value of at least 32 characters. To generate one and set it for the current PowerShell session:
 
----
-
-## 📁 Project Structure
-
+```powershell
+$env:SECRET_KEY = (python -c "import secrets; print(secrets.token_urlsafe(48))")
 ```
-python file manager/
-├── app.py                 # Streamlit cloud-native file manager & web dashboard
-├── main.py                # ANSI colorized interactive terminal CLI
-├── file_identifier.py     # Binary signature & magic byte inspection engine
-├── integrity_checker.py   # SHA-256 baseline creation & cryptographic diff engine
-├── organizer.py           # Intelligent categorization & ZIP bundling engine
-├── requirements.txt       # Project dependencies (streamlit, pandas, altair)
-└── README.md              # Project documentation
+
+Start the app:
+
+```powershell
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
 ```
+
+Open [http://127.0.0.1:8001](http://127.0.0.1:8001), create an account, and sign in. The API docs are available at `/docs` in development only.
+
+Run the account-isolation and upload-limit tests with:
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+Environment variables:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `SECRET_KEY` | Signs access tokens; set a unique secret before deployment | Development-only value |
+| `ENVIRONMENT` | Set to `production` to enable production checks and headers | `development` |
+| `DATABASE_URL` | SQLAlchemy database URL | `sqlite:///./app.db` |
+| `UPLOAD_DIR` | Private file storage root | `app/uploads` |
+| `STORAGE_BACKEND` | `local` for development or `vercel_blob` for Vercel | `local` |
+| `MAX_UPLOAD_SIZE_BYTES` | Maximum accepted upload size | `4194304` |
+| `ALLOWED_HOSTS` | Comma-separated trusted hostnames | Unrestricted for local development |
+| `ALLOWED_ORIGINS` | Comma-separated CORS origins, if a separate frontend needs them | Same-origin only |
+
+When `libmagic` is available, the app detects MIME types from file contents. Otherwise it uses the bundled `filetype` signature detector and only falls back to the extension mapping for formats it cannot identify. Extension matching is a warning, not a malware scan or full content validation.
+
+## Deploy to Vercel
+
+The root `main.py` exports the FastAPI app for Vercel's Python runtime. Vercel Functions are temporary, so Vercel deployments require PostgreSQL and a **private** Vercel Blob store; the local SQLite/file-storage backend is rejected at startup on Vercel.
+
+1. Push this project to a GitHub repository and import it from the Vercel dashboard. Keep the project root as the Root Directory. Vercel detects the root `main.py`, `requirements.txt`, and `.python-version` (Python 3.12).
+2. In Vercel Storage, create a **private** Blob store and connect it to this project. The Python SDK uses Vercel's project OIDC credentials when connected.
+3. Connect a hosted PostgreSQL database (for example through the Vercel Marketplace) and copy its TLS-enabled connection string into the Vercel environment variable `DATABASE_URL`.
+4. Add these environment variables for the Production environment:
+
+   | Name | Value |
+   |---|---|
+   | `ENVIRONMENT` | `production` |
+   | `STORAGE_BACKEND` | `vercel_blob` |
+   | `DATABASE_URL` | Hosted PostgreSQL connection string |
+   | `SECRET_KEY` | Unique random value with at least 32 characters |
+   | `MAX_UPLOAD_SIZE_BYTES` | `4194304` |
+   | `ALLOWED_HOSTS` | Your exact `your-project.vercel.app` hostname and any custom domain, comma-separated |
+
+   Vercel provides `VERCEL` and the current `VERCEL_URL`. The app uses that deployment hostname for host validation; add custom domains to `ALLOWED_HOSTS`. Do not use `*`.
+5. Deploy from the Vercel dashboard. Open the resulting HTTPS URL, create an account, and test with two accounts to confirm each sees only its own files. The app creates its database tables on first start.
+
+Use separate database and Blob resources for Preview deployments if you enable previews; do not let preview builds access production user files. Existing local SQLite data and uploaded files are not copied to the hosted services. The Vercel request-body limit is about 4.5 MB for the whole multipart request, so the configured file limit is 4 MiB.
+
+This makes access account-private but does not add application-managed encryption at rest, malware scanning, email verification, password recovery, or rate limiting. Treat this as a student project, not a service for sensitive or regulated files. Confirm the storage providers' encryption, retention, access, and backup terms before uploading anything confidential.
+
+## Existing local databases
+
+On startup, the app adds an `owner_id` column to an older `files` table if needed. Legacy file records are left unassigned and are not visible to any account. Back up the database before upgrading; do not make those records public to work around the migration.
+
+## Main features
+
+- Browser-based account registration and sign-in
+- Account-scoped upload, listing, download, and deletion
+- One-hour signed access tokens, cleared when signing out
+- File size enforcement and generated storage names
+- MIME metadata and extension-mismatch warning
+- SHA-256 checksum calculation
+- Responsive dashboard with vault search and integrity summary
+- Security response headers and a health endpoint at `/health`
