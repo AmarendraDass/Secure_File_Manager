@@ -442,20 +442,62 @@ uploadForm.addEventListener("submit", async event => {
             method: "POST",
             body: new FormData(uploadForm)
         });
+        let verification;
+        let verificationError = "";
+        try {
+            verification = await api(`/files/verify/${encodeURIComponent(result.id)}`, { method: "POST" });
+            if (!verification || typeof verification.matches !== "boolean") {
+                throw new Error("The server returned an invalid integrity verification result.");
+            }
+        } catch (error) {
+            verificationError = error.message || "Integrity verification could not be completed.";
+        }
+
         uploadResult.replaceChildren();
-        uploadResult.className = `upload-result${result.extension_mismatch ? " result-warning" : " result-success"}`;
+        uploadResult.className = `upload-result${verification?.matches === false || verificationError ? " result-warning" : " result-success"}`;
         uploadResult.hidden = false;
         const title = document.createElement("strong");
-        title.textContent = result.extension_mismatch
-            ? "File type does not match its filename extension."
-            : "File uploaded and checksum recorded";
+        title.textContent = verificationError
+            ? "File uploaded, but integrity could not be verified."
+            : verification.matches
+                ? "File uploaded and integrity verified."
+                : "Integrity mismatch detected after upload.";
         const details = document.createElement("span");
-        details.textContent = `${result.mime_type || "Unknown type"} · SHA-256 `;
+        details.textContent = verificationError
+            ? `${result.mime_type || "Unknown type"} · SHA-256 recorded, but stored contents could not be checked.`
+            : verification.matches
+                ? `${result.mime_type || "Unknown type"} · Stored file matches SHA-256 `
+                : `Saved SHA-256: `;
         const checksum = document.createElement("code");
-        checksum.textContent = result.sha256 || "unavailable";
+        checksum.textContent = verificationError
+            ? result.sha256 || "unavailable"
+            : verification.matches
+                ? verification.actual_sha256
+                : verification.expected_sha256;
         details.appendChild(checksum);
         uploadResult.append(title, details);
-        showToast("File added to your vault.");
+        if (verification && !verification.matches) {
+            const actualDetails = document.createElement("span");
+            actualDetails.className = "upload-actual-checksum";
+            actualDetails.textContent = "Actual SHA-256: ";
+            const actualChecksum = document.createElement("code");
+            actualChecksum.textContent = verification.actual_sha256;
+            actualDetails.appendChild(actualChecksum);
+            uploadResult.appendChild(actualDetails);
+        }
+        if (result.extension_mismatch) {
+            const typeWarning = document.createElement("span");
+            typeWarning.className = "upload-type-warning";
+            typeWarning.textContent = "File type does not match its filename extension.";
+            uploadResult.appendChild(typeWarning);
+        }
+        if (verificationError) {
+            showToast(`File uploaded, but integrity verification failed: ${verificationError}`, true);
+        } else if (!verification.matches) {
+            showToast("Integrity mismatch detected after upload. Review the saved and actual checksums.", true);
+        } else {
+            showToast("File uploaded and integrity verified.");
+        }
         uploadForm.reset();
         fileLabel.classList.remove("selected-file-name");
         fileLabel.replaceChildren(document.createTextNode("Drop a file here, or "));

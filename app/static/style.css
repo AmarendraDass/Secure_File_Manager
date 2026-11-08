@@ -216,6 +216,8 @@ h1 span { color: #4580e7; }
 .upload-result strong { font-weight: 600; }
 .upload-result code { color: #4b6875; font: 9px "DM Mono", monospace; overflow-wrap: anywhere; }
 .upload-result.result-warning { border-color: #f1e4c9; background: #fffaf0; color: #8b651e; }
+.upload-result .upload-type-warning { color: #8b651e; font-weight: 600; }
+.upload-result .upload-actual-checksum { color: #a5453e; }
 
 .workflow-panel { min-height: 246px; }
 .workflow-list { display: grid; gap: 0; margin: 14px 0 0; padding: 0; list-style: none; }
