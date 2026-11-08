@@ -8,7 +8,126 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <section id="auth-screen" class="auth-screen">
+    <section id="landing-screen" class="landing-screen">
+        <header class="landing-header">
+            <a class="brand landing-brand" href="/" aria-label="Vaultline home">
+                <span class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 3 19 6v5.5c0 4.5-2.9 7.7-7 9.5-4.1-1.8-7-5-7-9.5V6l7-3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                        <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+                <span class="brand-copy"><strong>vaultline</strong><small>SECURE FILE MANAGER</small></span>
+            </a>
+            <nav class="landing-nav" aria-label="Landing page navigation">
+                <a href="#landing-features">Features</a>
+                <a href="#landing-security">Security notes</a>
+                <button id="landing-login" class="button button-quiet" type="button">Sign in</button>
+                <button id="landing-register" class="button button-primary" type="button">Get started <span aria-hidden="true">↗</span></button>
+            </nav>
+        </header>
+
+        <main class="landing-main">
+            <section class="landing-hero">
+                <div class="landing-copy">
+                    <div class="landing-kicker"><span class="landing-kicker-dot"></span> A PRIVATE WORKSPACE FOR YOUR FILES</div>
+                    <h1>Keep your files<br><span>in your control.</span></h1>
+                    <p>One calm place to organize what matters, understand your files, and keep an eye on their integrity.</p>
+                    <div class="landing-actions">
+                        <button id="landing-get-started" class="button button-primary" type="button">Create your workspace <span aria-hidden="true">↗</span></button>
+                        <a class="landing-secondary" href="#landing-features">Take a look <span aria-hidden="true">↓</span></a>
+                    </div>
+                    <div class="landing-proof">
+                        <span><i aria-hidden="true">✓</i> Private by account</span>
+                        <span class="landing-proof-divider" aria-hidden="true"></span>
+                        <span><i aria-hidden="true">⌁</i> SHA-256 records</span>
+                    </div>
+                </div>
+                <div class="landing-visual" role="img" aria-label="Illustration of a protected file surrounded by integrity signals">
+                    <div class="visual-glow"></div>
+                    <div class="visual-orbit visual-orbit-outer"></div>
+                    <div class="visual-orbit visual-orbit-inner"></div>
+                    <svg class="orbit-art" viewBox="0 0 520 520" aria-hidden="true">
+                        <defs>
+                            <linearGradient id="orbit-stroke" x1="0" y1="0" x2="1" y2="1">
+                                <stop offset="0" stop-color="#75a8ff" stop-opacity=".05"/>
+                                <stop offset=".48" stop-color="#75a8ff" stop-opacity=".72"/>
+                                <stop offset="1" stop-color="#a88cff" stop-opacity=".1"/>
+                            </linearGradient>
+                            <radialGradient id="core-fill">
+                                <stop offset="0" stop-color="#3979e8" stop-opacity=".35"/>
+                                <stop offset="1" stop-color="#3979e8" stop-opacity="0"/>
+                            </radialGradient>
+                        </defs>
+                        <circle class="orbit-track" cx="260" cy="260" r="205"/>
+                        <circle class="orbit-track orbit-track-inner" cx="260" cy="260" r="158"/>
+                        <circle cx="260" cy="260" r="112" fill="url(#core-fill)"/>
+                        <circle class="orbit-dash" cx="260" cy="260" r="205" stroke="url(#orbit-stroke)"/>
+                        <circle class="orbit-spark" cx="260" cy="55" r="3"/>
+                        <circle class="orbit-spark orbit-spark-violet" cx="465" cy="260" r="3"/>
+                        <circle class="orbit-spark orbit-spark-blue" cx="115" cy="405" r="2.5"/>
+                        <path d="M260 205 302 222v34c0 29-18 50-42 61-24-11-42-32-42-61v-34l42-17Z" fill="#121b2b" stroke="#719eff" stroke-width="1.5"/>
+                        <path d="m244 257 11 11 22-24" fill="none" stroke="#a9c5ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div class="visual-chip visual-chip-file">
+                        <span class="chip-icon chip-icon-file" aria-hidden="true">▤</span>
+                        <span><strong>File records</strong><small>Organized by you</small></span>
+                        <span class="chip-check" aria-hidden="true">✓</span>
+                    </div>
+                    <div class="visual-chip visual-chip-hash">
+                        <span class="chip-icon chip-icon-hash" aria-hidden="true">#</span>
+                        <span><strong>SHA-256</strong><small>Integrity record</small></span>
+                    </div>
+                    <div class="visual-caption"><span class="visual-caption-line"></span> YOUR FILES, YOUR WORKSPACE</div>
+                </div>
+            </section>
+
+            <section id="landing-features" class="landing-features" aria-label="Workspace features">
+                <div class="features-heading">
+                    <div>
+                        <div class="landing-kicker"><span class="landing-kicker-dot"></span> MADE FOR THE DETAILS</div>
+                        <h2>A little more clarity<br>in every file.</h2>
+                    </div>
+                    <p>Thoughtful tools to help you keep track of files and the details that come with them.</p>
+                </div>
+                <div class="feature-grid">
+                    <article class="landing-feature">
+                        <span class="feature-index">01 <span aria-hidden="true">/</span> ORGANIZE</span>
+                        <span class="feature-mark feature-mark-blue" aria-hidden="true">▤</span>
+                        <h3>A place for your files</h3>
+                        <p>Upload and search your files in a workspace scoped to your account.</p>
+                        <span class="feature-arrow" aria-hidden="true">↗</span>
+                    </article>
+                    <article class="landing-feature">
+                        <span class="feature-index">02 <span aria-hidden="true">/</span> UNDERSTAND</span>
+                        <span class="feature-mark feature-mark-teal" aria-hidden="true">⌁</span>
+                        <h3>Know what you’re storing</h3>
+                        <p>Review detected file types and notice when an extension may not match.</p>
+                        <span class="feature-arrow" aria-hidden="true">↗</span>
+                    </article>
+                    <article class="landing-feature">
+                        <span class="feature-index">03 <span aria-hidden="true">/</span> CHECK</span>
+                        <span class="feature-mark feature-mark-violet" aria-hidden="true">#</span>
+                        <h3>Keep an integrity record</h3>
+                        <p>Use SHA-256 checksums as a helpful reference for file changes.</p>
+                        <span class="feature-arrow" aria-hidden="true">↗</span>
+                    </article>
+                </div>
+            </section>
+
+            <aside id="landing-security" class="landing-disclaimer">
+                <span class="security-note-icon" aria-hidden="true">!</span>
+                <div>
+                    <span class="security-note-label">A NOTE ON SECURITY</span>
+                    <p><strong>Account privacy isn’t encryption.</strong> Files are not encrypted at rest, and checksums are not malware scans. Please don’t upload sensitive data.</p>
+                </div>
+                <span class="security-note-mark" aria-hidden="true">VAULTLINE / 01</span>
+            </aside>
+        </main>
+        <footer class="landing-footer"><span>VAULTLINE</span><span>PRIVATE FILE WORKSPACE</span><span>BUILT FOR FILE INTEGRITY</span></footer>
+    </section>
+
+    <section id="auth-screen" class="auth-screen" hidden>
         <a class="brand auth-brand" href="/" aria-label="Vaultline home">
             <span class="brand-mark" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none">

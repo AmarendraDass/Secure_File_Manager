@@ -1,3 +1,4 @@
+const landingScreen = document.getElementById("landing-screen");
 const authScreen = document.getElementById("auth-screen");
 const authForm = document.getElementById("auth-form");
 const authUsername = document.getElementById("auth-username");
@@ -50,10 +51,18 @@ function errorMessage(detail, fallback) {
 }
 
 function showAuth(message = "") {
+    landingScreen.hidden = true;
     appShell.hidden = true;
     authScreen.hidden = false;
     authError.textContent = message;
     authError.hidden = !message;
+    authUsername.focus();
+}
+
+function showLanding() {
+    landingScreen.hidden = false;
+    authScreen.hidden = true;
+    appShell.hidden = true;
 }
 
 function setAuthMode(mode) {
@@ -266,6 +275,19 @@ authToggle.addEventListener("click", () => {
     setAuthMode(authMode === "login" ? "register" : "login");
 });
 
+document.getElementById("landing-login").addEventListener("click", () => {
+    setAuthMode("login");
+    showAuth();
+});
+document.getElementById("landing-register").addEventListener("click", () => {
+    setAuthMode("register");
+    showAuth();
+});
+document.getElementById("landing-get-started").addEventListener("click", () => {
+    setAuthMode("register");
+    showAuth();
+});
+
 authForm.addEventListener("submit", async event => {
     event.preventDefault();
     authSubmit.disabled = true;
@@ -378,7 +400,10 @@ uploadForm.addEventListener("submit", async event => {
 });
 
 async function initialize() {
-    if (!accessToken) return;
+    if (!accessToken) {
+        showLanding();
+        return;
+    }
     try {
         const user = await api("/auth/me", {
             headers: { Authorization: `Bearer ${accessToken}` }

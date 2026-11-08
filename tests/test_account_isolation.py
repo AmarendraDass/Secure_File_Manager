@@ -66,6 +66,23 @@ class AccountIsolationTests(unittest.TestCase):
         png_signature = b"\x89PNG\r\n\x1a\n" + bytes(16)
         self.assertEqual(detect_mime_type("misleading.txt", png_signature), "image/png")
 
+    def test_homepage_precedes_sign_in(self):
+        asyncio.run(self._check_homepage())
+
+    async def _check_homepage(self):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="landing-screen"', response.text)
+        self.assertIn('id="landing-login"', response.text)
+        self.assertIn('id="landing-register"', response.text)
+        self.assertIn("Keep your files", response.text)
+        self.assertIn('class="landing-visual"', response.text)
+        self.assertEqual(response.text.count('class="landing-feature"'), 3)
+        self.assertIn('<section id="auth-screen" class="auth-screen" hidden>', response.text)
+
     async def _exercise_account_access(self):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:

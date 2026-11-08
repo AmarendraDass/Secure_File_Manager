@@ -33,7 +33,7 @@ Start the app:
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
 ```
 
-Open [http://127.0.0.1:8001](http://127.0.0.1:8001), create an account, and sign in. The API docs are available at `/docs` in development only.
+Open [http://127.0.0.1:8001](http://127.0.0.1:8001) to see the public landing page. Choose **Sign in** or **Create account** to enter the private workspace. The API docs are available at `/docs` in development only.
 
 Run the account-isolation and upload-limit tests with:
 
