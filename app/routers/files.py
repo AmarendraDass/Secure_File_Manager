@@ -21,12 +21,30 @@ except ImportError:  # Windows may not have libmagic installed.
     magic = None
 
 from app.core.config import settings
+from app.models.activity import ActivityEvent
 from app.models.file import FileRecord
 from app.models.user import User
 from app.routers.auth import get_current_user, get_db
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+def add_activity(
+    db: Session,
+    current_user: User,
+    action: str,
+    filename: str,
+    result: str | None = None,
+) -> ActivityEvent:
+    event = ActivityEvent(
+        owner_id=current_user.id,
+        action=action,
+        filename=filename,
+        result=result,
+    )
+    db.add(event)
+    return event
 
 
 def safe_display_name(filename: str | None) -> str:
@@ -120,7 +138,7 @@ async def upload_file(
             stored_value = str(stored_path)
 
         expected_mime, _ = mimetypes.guess_type(filename)
-        extension_mismatch = expected_mime is None or expected_mime != mime_type
+        extension_mismatch = expected_mime is not None and expected_mime != mime_type
 
         record = FileRecord(
             owner_id=current_user.id,
@@ -131,6 +149,13 @@ async def upload_file(
             extension=extension,
         )
         db.add(record)
+        add_activity(
+            db,
+            current_user,
+            "upload",
+            filename,
+            "type_mismatch" if extension_mismatch else None,
+        )
         db.commit()
         db.refresh(record)
     except BaseException:
@@ -180,6 +205,30 @@ def list_files(
     ]
 
 
+@router.get("/activity")
+def list_activity(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    events = (
+        db.query(ActivityEvent)
+        .filter(ActivityEvent.owner_id == current_user.id)
+        .order_by(ActivityEvent.created_at.desc(), ActivityEvent.id.desc())
+        .limit(12)
+        .all()
+    )
+    return [
+        {
+            "id": event.id,
+            "action": event.action,
+            "filename": event.filename,
+            "result": event.result,
+            "created_at": event.created_at,
+        }
+        for event in events
+    ]
+
+
 @router.get("/download/{file_id}")
 async def download_file(
     file_id: int,
@@ -208,6 +257,13 @@ async def download_file(
                 ) from None
             raise
 
+        add_activity(db, current_user, "download", record.filename)
+        try:
+            db.commit()
+        except BaseException:
+            await stack.aclose()
+            raise
+
         return StreamingResponse(
             download,
             media_type=record.mime_type,
@@ -221,11 +277,76 @@ async def download_file(
 
     if not Path(record.stored_path).is_file():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+    add_activity(db, current_user, "download", record.filename)
+    db.commit()
     return FileResponse(
         path=record.stored_path,
         filename=record.filename,
         media_type=record.mime_type,
     )
+
+
+@router.post("/verify/{file_id}")
+async def verify_file(
+    file_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    record = (
+        db.query(FileRecord)
+        .filter(FileRecord.id == file_id, FileRecord.owner_id == current_user.id)
+        .first()
+    )
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    checksum = hashlib.sha256()
+    if settings.STORAGE_BACKEND == "vercel_blob":
+        stack = AsyncExitStack()
+        try:
+            download = await stack.enter_async_context(
+                blob.stream_blob(record.stored_path, access="private")
+            )
+            async for chunk in download:
+                checksum.update(chunk)
+        except blob.BlobError as error:
+            if isinstance(error, blob.BlobNotFoundError):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="File not found",
+                ) from None
+            raise
+        finally:
+            await stack.aclose()
+    else:
+        stored_path = Path(record.stored_path)
+        if not stored_path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        try:
+            async with aiofiles.open(stored_path, "rb") as source:
+                while chunk := await source.read(1024 * 1024):
+                    checksum.update(chunk)
+        except FileNotFoundError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File not found",
+            ) from None
+
+    actual_sha256 = checksum.hexdigest()
+    matches = actual_sha256 == record.sha256
+    add_activity(
+        db,
+        current_user,
+        "verify",
+        record.filename,
+        "verified" if matches else "mismatch",
+    )
+    db.commit()
+    return {
+        "matches": matches,
+        "expected_sha256": record.sha256,
+        "actual_sha256": actual_sha256,
+    }
 
 
 @router.delete("/delete/{file_id}")
@@ -246,6 +367,7 @@ async def delete_file(
         await blob.delete_blob(record.stored_path)
     else:
         Path(record.stored_path).unlink(missing_ok=True)
+    add_activity(db, current_user, "delete", record.filename)
     db.delete(record)
     db.commit()
     return {"msg": "File deleted"}

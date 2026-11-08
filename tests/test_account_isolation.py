@@ -66,6 +66,9 @@ class AccountIsolationTests(unittest.TestCase):
         png_signature = b"\x89PNG\r\n\x1a\n" + bytes(16)
         self.assertEqual(detect_mime_type("misleading.txt", png_signature), "image/png")
 
+    def test_extension_mismatch_is_reported_only_when_types_disagree(self):
+        asyncio.run(self._exercise_extension_mismatch())
+
     def test_homepage_precedes_sign_in(self):
         asyncio.run(self._check_homepage())
 
@@ -80,8 +83,34 @@ class AccountIsolationTests(unittest.TestCase):
         self.assertIn('id="landing-register"', response.text)
         self.assertIn("Keep your files", response.text)
         self.assertIn('class="landing-visual"', response.text)
-        self.assertEqual(response.text.count('class="landing-feature"'), 3)
+        self.assertEqual(response.text.count('class="landing-feature"'), 4)
         self.assertIn('<section id="auth-screen" class="auth-screen" hidden>', response.text)
+
+    async def _exercise_extension_mismatch(self):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            registered = await client.post(
+                "/auth/register",
+                json={"username": "mime_student", "password": "a-strong-mime-password"},
+            )
+            self.assertEqual(registered.status_code, 201)
+            headers = {"Authorization": f"Bearer {registered.json()['access_token']}"}
+
+            misleading = await client.post(
+                "/files/upload",
+                headers=headers,
+                files={"file": ("image.txt", b"\x89PNG\r\n\x1a\n" + bytes(16), "text/plain")},
+            )
+            self.assertEqual(misleading.status_code, 201)
+            self.assertTrue(misleading.json()["extension_mismatch"])
+
+            unknown_extension = await client.post(
+                "/files/upload",
+                headers=headers,
+                files={"file": ("notes.unknownext", b"plain text", "text/plain")},
+            )
+            self.assertEqual(unknown_extension.status_code, 201)
+            self.assertFalse(unknown_extension.json()["extension_mismatch"])
 
     async def _exercise_account_access(self):
         transport = httpx.ASGITransport(app=app)
@@ -141,8 +170,35 @@ class AccountIsolationTests(unittest.TestCase):
             self.assertEqual([item["id"] for item in list_a.json()], [record["id"]])
             self.assertEqual(list_b.json(), [])
 
+            initial_verification = await client.post(
+                f"/files/verify/{record['id']}",
+                headers=headers_a,
+            )
+            self.assertEqual(initial_verification.status_code, 200)
+            self.assertTrue(initial_verification.json()["matches"])
+            self.assertEqual(
+                initial_verification.json()["actual_sha256"],
+                record["sha256"],
+            )
+
+            db = self.session_factory()
+            stored_path = Path(db.query(FileRecord).filter_by(id=record["id"]).one().stored_path)
+            db.close()
+            stored_path.write_bytes(b"tampered file contents")
+            changed_verification = await client.post(
+                f"/files/verify/{record['id']}",
+                headers=headers_a,
+            )
+            stored_path.write_bytes(b"private file contents")
+            self.assertEqual(changed_verification.status_code, 200)
+            self.assertFalse(changed_verification.json()["matches"])
+
             foreign_download = await client.get(
                 f"/files/download/{record['id']}",
+                headers=headers_b,
+            )
+            foreign_verify = await client.post(
+                f"/files/verify/{record['id']}",
                 headers=headers_b,
             )
             foreign_delete = await client.delete(
@@ -150,7 +206,9 @@ class AccountIsolationTests(unittest.TestCase):
                 headers=headers_b,
             )
             self.assertEqual(foreign_download.status_code, 404)
+            self.assertEqual(foreign_verify.status_code, 404)
             self.assertEqual(foreign_delete.status_code, 404)
+            self.assertEqual((await client.get("/files/activity", headers=headers_b)).json(), [])
 
             own_download = await client.get(
                 f"/files/download/{record['id']}",
@@ -165,6 +223,16 @@ class AccountIsolationTests(unittest.TestCase):
             )
             self.assertEqual(own_delete.status_code, 200)
             self.assertEqual((await client.get("/files/list", headers=headers_a)).json(), [])
+            activity = await client.get("/files/activity", headers=headers_a)
+            self.assertEqual(activity.status_code, 200)
+            self.assertEqual(
+                [event["action"] for event in activity.json()],
+                ["delete", "download", "verify", "verify", "upload"],
+            )
+            self.assertEqual(
+                [event["result"] for event in activity.json() if event["action"] == "verify"],
+                ["mismatch", "verified"],
+            )
 
     async def _exercise_private_blob_storage(self):
         settings.STORAGE_BACKEND = "vercel_blob"
@@ -228,12 +296,24 @@ class AccountIsolationTests(unittest.TestCase):
                 self.assertEqual(downloaded.content, b"private blob contents")
                 self.assertEqual(downloaded.headers["cache-control"], "private, no-store")
 
+                verified = await client.post(
+                    f"/files/verify/{record['id']}",
+                    headers=headers,
+                )
+                self.assertEqual(verified.status_code, 200)
+                self.assertTrue(verified.json()["matches"])
+
                 deleted = await client.delete(
                     f"/files/delete/{record['id']}",
                     headers=headers,
                 )
                 self.assertEqual(deleted.status_code, 200)
                 self.assertEqual(stored_blobs, {})
+                activity = await client.get("/files/activity", headers=headers)
+                self.assertEqual(
+                    [event["action"] for event in activity.json()],
+                    ["delete", "verify", "download", "upload"],
+                )
 
 
 if __name__ == "__main__":

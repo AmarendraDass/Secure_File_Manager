@@ -102,14 +102,21 @@
                         <span class="feature-index">02 <span aria-hidden="true">/</span> UNDERSTAND</span>
                         <span class="feature-mark feature-mark-teal" aria-hidden="true">⌁</span>
                         <h3>Know what you’re storing</h3>
-                        <p>Review detected file types and notice when an extension may not match.</p>
+                        <p>See when a filename extension doesn’t match the detected file type.</p>
                         <span class="feature-arrow" aria-hidden="true">↗</span>
                     </article>
                     <article class="landing-feature">
-                        <span class="feature-index">03 <span aria-hidden="true">/</span> CHECK</span>
+                        <span class="feature-index">03 <span aria-hidden="true">/</span> VERIFY</span>
                         <span class="feature-mark feature-mark-violet" aria-hidden="true">#</span>
-                        <h3>Keep an integrity record</h3>
-                        <p>Use SHA-256 checksums as a helpful reference for file changes.</p>
+                        <h3>Verify file integrity</h3>
+                        <p>Recheck file contents against the SHA-256 checksum recorded at upload.</p>
+                        <span class="feature-arrow" aria-hidden="true">↗</span>
+                    </article>
+                    <article class="landing-feature">
+                        <span class="feature-index">04 <span aria-hidden="true">/</span> REVIEW</span>
+                        <span class="feature-mark feature-mark-blue" aria-hidden="true">◷</span>
+                        <h3>Follow recent activity</h3>
+                        <p>Review recent uploads, downloads, integrity checks, and deletions.</p>
                         <span class="feature-arrow" aria-hidden="true">↗</span>
                     </article>
                 </div>
@@ -176,6 +183,9 @@
                 <a class="nav-link" href="#vault">
                     <span class="nav-icon" aria-hidden="true">▤</span> File vault
                     <span id="nav-file-count" class="nav-count">0</span>
+                </a>
+                <a class="nav-link" href="#activity">
+                    <span class="nav-icon" aria-hidden="true">◷</span> Activity
                 </a>
                 <a class="nav-link" href="#security-notes">
                     <span class="nav-icon" aria-hidden="true">◎</span> Security notes
@@ -338,6 +348,19 @@
                         <strong>No matching files</strong>
                         <p>Try a different filename, MIME type, or checksum.</p>
                     </div>
+                </section>
+
+                <section class="panel activity-panel" id="activity" aria-label="Recent security activity">
+                    <div class="activity-heading">
+                        <div>
+                            <div class="eyebrow">FILE ACTIVITY</div>
+                            <h2>Recent activity</h2>
+                            <p>Recent file actions in your account.</p>
+                        </div>
+                        <span class="activity-live"><span aria-hidden="true"></span> ACCOUNT ONLY</span>
+                    </div>
+                    <ol id="activity-list" class="activity-list" aria-live="polite"></ol>
+                    <div id="activity-empty" class="activity-empty">No recent file activity.</div>
                 </section>
 
                 <section class="security-notes" id="security-notes">

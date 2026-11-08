@@ -92,6 +92,7 @@ On startup, the app adds an `owner_id` column to an older `files` table if neede
 - One-hour signed access tokens, cleared when signing out
 - File size enforcement and generated storage names
 - MIME metadata and extension-mismatch warning
-- SHA-256 checksum calculation
+- SHA-256 checksum calculation and on-demand file integrity verification
+- Account-scoped activity history for uploads, verification checks, downloads, and deletions
 - Responsive dashboard with vault search and integrity summary
 - Security response headers and a health endpoint at `/health`

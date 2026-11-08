@@ -20,6 +20,8 @@ const dropzone = document.getElementById("dropzone");
 const filesTableBody = document.querySelector("#files-table tbody");
 const emptyState = document.getElementById("table-empty");
 const noResultsState = document.getElementById("table-no-results");
+const activityList = document.getElementById("activity-list");
+const activityEmpty = document.getElementById("activity-empty");
 const searchInput = document.getElementById("search-input");
 const toast = document.getElementById("toast");
 
@@ -165,6 +167,13 @@ function renderFiles() {
 
         const actionsCell = document.createElement("td");
         actionsCell.className = "actions-cell";
+        const verify = document.createElement("button");
+        verify.className = "icon-button verify-button";
+        verify.type = "button";
+        verify.setAttribute("aria-label", `Verify integrity of ${file.filename || "file"}`);
+        verify.title = "Verify integrity";
+        verify.textContent = "✓";
+        verify.addEventListener("click", () => verifyFile(file));
         const download = document.createElement("button");
         download.className = "icon-button";
         download.type = "button";
@@ -179,7 +188,7 @@ function renderFiles() {
         remove.title = "Delete";
         remove.textContent = "×";
         remove.addEventListener("click", () => deleteFile(file));
-        actionsCell.append(download, remove);
+        actionsCell.append(verify, download, remove);
 
         row.append(
             nameCell,
@@ -190,6 +199,59 @@ function renderFiles() {
         );
         filesTableBody.appendChild(row);
     });
+}
+
+function renderActivity(events) {
+    activityList.replaceChildren();
+    activityEmpty.textContent = "No recent file activity.";
+
+    for (const event of events) {
+        const labels = {
+            upload: event.result === "type_mismatch"
+                ? "Uploaded — file type doesn't match extension"
+                : "Uploaded file",
+            verify: event.result === "verified" ? "Integrity verified" : "Integrity mismatch detected",
+            download: "Downloaded file",
+            delete: "Deleted file"
+        };
+        const item = document.createElement("li");
+        item.className = "activity-item";
+        const marker = document.createElement("span");
+        const warning = event.result === "mismatch" || event.result === "type_mismatch";
+        marker.className = `activity-marker activity-${event.action}${warning ? " activity-warning" : ""}`;
+        marker.setAttribute("aria-hidden", "true");
+        marker.textContent = event.action === "verify" ? "✓"
+            : event.action === "upload" ? "↑"
+                : event.action === "download" ? "↓" : "×";
+        const details = document.createElement("div");
+        details.className = "activity-details";
+        const title = document.createElement("strong");
+        title.textContent = labels[event.action] || "File activity";
+        const filename = document.createElement("span");
+        filename.textContent = event.filename || "Unnamed file";
+        details.append(title, filename);
+        const time = document.createElement("time");
+        time.className = "activity-time";
+        time.dateTime = event.created_at || "";
+        time.textContent = formatDate(event.created_at);
+        item.append(marker, details, time);
+        activityList.appendChild(item);
+    }
+
+    activityEmpty.hidden = events.length > 0;
+}
+
+async function loadActivity() {
+    try {
+        const data = await api("/files/activity");
+        if (!Array.isArray(data)) throw new Error("The server returned invalid activity data.");
+        renderActivity(data);
+    } catch (error) {
+        activityList.replaceChildren();
+        activityEmpty.textContent = "Recent activity could not be loaded.";
+        activityEmpty.hidden = false;
+        showToast(error.message || "Could not load recent activity.", true);
+    }
 }
 
 async function loadFiles() {
@@ -224,7 +286,21 @@ async function enterWorkspace(username) {
     document.getElementById("account-name").textContent = username;
     authScreen.hidden = true;
     appShell.hidden = false;
-    await loadFiles();
+    await Promise.all([loadFiles(), loadActivity()]);
+}
+
+async function verifyFile(file) {
+    try {
+        const result = await api(`/files/verify/${encodeURIComponent(file.id)}`, { method: "POST" });
+        if (result.matches) {
+            showToast(`Integrity verified: "${file.filename}" matches its saved checksum.`);
+        } else {
+            showToast(`Integrity mismatch: "${file.filename}" differs from its saved checksum.`, true);
+        }
+        await loadActivity();
+    } catch (error) {
+        showToast(error.message || "Could not verify file integrity.", true);
+    }
 }
 
 async function downloadFile(file) {
@@ -248,6 +324,7 @@ async function downloadFile(file) {
         link.click();
         link.remove();
         setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        await loadActivity();
     } catch (error) {
         showToast(error.message || "Could not download the file.", true);
     }
@@ -258,7 +335,7 @@ async function deleteFile(file) {
     try {
         await api(`/files/delete/${encodeURIComponent(file.id)}`, { method: "DELETE" });
         showToast("File deleted from your vault.");
-        await loadFiles();
+        await Promise.all([loadFiles(), loadActivity()]);
     } catch (error) {
         showToast(error.message || "Could not delete the file.", true);
     }
@@ -370,7 +447,7 @@ uploadForm.addEventListener("submit", async event => {
         uploadResult.hidden = false;
         const title = document.createElement("strong");
         title.textContent = result.extension_mismatch
-            ? "File uploaded — extension may not match its detected type"
+            ? "File type does not match its filename extension."
             : "File uploaded and checksum recorded";
         const details = document.createElement("span");
         details.textContent = `${result.mime_type || "Unknown type"} · SHA-256 `;
@@ -385,7 +462,7 @@ uploadForm.addEventListener("submit", async event => {
         const browseLabel = document.createElement("span");
         browseLabel.textContent = "browse";
         fileLabel.appendChild(browseLabel);
-        await loadFiles();
+        await Promise.all([loadFiles(), loadActivity()]);
     } catch (error) {
         showToast(error.message || "Upload failed. Please try again.", true);
     } finally {
