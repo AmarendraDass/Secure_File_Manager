@@ -22,7 +22,13 @@ is_vercel = os.environ.get("VERCEL") == "1"
 is_production = settings.ENVIRONMENT.strip().lower() == "production"
 
 # Always ensure Vercel subdomains and local hosts are permitted
-for default_host in ("*.vercel.app", "secure-file-manager-dra6.vercel.app", "localhost", "127.0.0.1"):
+for default_host in (
+    "*.vercel.app",
+    "vaultline-app.vercel.app",
+    "secure-file-manager-dra6.vercel.app",
+    "localhost",
+    "127.0.0.1",
+):
     if default_host not in allowed_hosts:
         allowed_hosts.append(default_host)
 
@@ -82,14 +88,17 @@ app = FastAPI(
     openapi_url=None if is_production else "/openapi.json",
 )
 
-if allowed_hosts and "*" not in allowed_hosts:
+if not is_vercel and allowed_hosts and "*" not in allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 cors_origins = list(allowed_origins)
 if not cors_origins or "*" in cors_origins:
     cors_origins = ["*"]
 else:
-    for default_origin in ("https://secure-file-manager-dra6.vercel.app",):
+    for default_origin in (
+        "https://secure-file-manager-dra6.vercel.app",
+        "https://vaultline-app.vercel.app",
+    ):
         if default_origin not in cors_origins:
             cors_origins.append(default_origin)
 
