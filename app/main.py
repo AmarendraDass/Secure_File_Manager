@@ -20,6 +20,12 @@ allowed_hosts = [host.strip() for host in settings.ALLOWED_HOSTS.split(",") if h
 allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
 is_vercel = os.environ.get("VERCEL") == "1"
 is_production = settings.ENVIRONMENT.strip().lower() == "production"
+
+# Always ensure Vercel subdomains and local hosts are permitted
+for default_host in ("*.vercel.app", "secure-file-manager-dra6.vercel.app", "localhost", "127.0.0.1"):
+    if default_host not in allowed_hosts:
+        allowed_hosts.append(default_host)
+
 for vercel_url_variable in ("VERCEL_URL", "VERCEL_PROJECT_PRODUCTION_URL"):
     vercel_url = os.environ.get(vercel_url_variable, "").strip()
     if vercel_url and vercel_url not in allowed_hosts:
@@ -30,45 +36,24 @@ if is_production:
     if len(settings.SECRET_KEY) < 32 or settings.SECRET_KEY == "dev-only-insecure-secret-change-before-deploy" or settings.SECRET_KEY.startswith("replace-"):
         import secrets
         settings.SECRET_KEY = secrets.token_hex(32)
-    # Populate allowed hosts if missing or wildcard
-    if not allowed_hosts or "*" in allowed_hosts:
-        vercel_host = os.environ.get("VERCEL_URL") or os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
-        if vercel_host:
-            allowed_hosts = [vercel_host]
-        else:
-            allowed_hosts = ["localhost"]
-    # Ensure allowed origins are specific
-    if "*" in allowed_origins:
-        allowed_origins = allowed_hosts
+
 if is_vercel:
     # Auto‑configure production defaults for Vercel when possible
     if not is_production:
-        # Assume Vercel deployments should run in production mode
         os.environ.setdefault('ENVIRONMENT', 'production')
         is_production = True
     # Use Vercel Blob storage if not explicitly set
     os.environ.setdefault('STORAGE_BACKEND', 'vercel_blob')
-    # If a PostgreSQL URL is not provided, fall back to SQLite with a warning (useful for quick testing)
+    # If a PostgreSQL URL is not provided, fall back to SQLite with a warning
     if not settings.SQLALCHEMY_DATABASE_URL.startswith(("postgres://", "postgresql://", "postgresql+psycopg://")):
-        # Log a warning; Vercel will still work but without a remote DB
         import warnings
         warnings.warn(
             "Vercel deployment without a PostgreSQL DATABASE_URL – using local SQLite. "
             "For production, set a hosted PostgreSQL DATABASE_URL."
         )
-        # Override to a temporary SQLite file within /tmp (writeable on Vercel functions)
-        settings.SQLALCHEMY_DATABASE_URL = 'sqlite:///./tmp/app.db'
     # Ensure the upload size limit respects Vercel's 4 MiB cap
     if settings.MAX_UPLOAD_SIZE_BYTES > 4 * 1024 * 1024:
         os.environ['MAX_UPLOAD_SIZE_BYTES'] = str(4 * 1024 * 1024)
-    # Populate allowed hosts from VERCEL_URL if not provided
-    if not allowed_hosts:
-        vercel_url = os.environ.get('VERCEL_URL') or os.environ.get('VERCEL_PROJECT_PRODUCTION_URL')
-        if vercel_url:
-            allowed_hosts.append(vercel_url)
-        else:
-            # Use a generic wildcard as a last resort (not ideal for production security)
-            allowed_hosts.append('*')
 
 
 STATIC_DIR.mkdir(exist_ok=True)
@@ -97,17 +82,24 @@ app = FastAPI(
     openapi_url=None if is_production else "/openapi.json",
 )
 
-if allowed_hosts:
+if allowed_hosts and "*" not in allowed_hosts:
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
-if allowed_origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=allowed_origins,
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "DELETE"],
-        allow_headers=["Authorization", "Content-Type"],
-    )
+cors_origins = list(allowed_origins)
+if not cors_origins or "*" in cors_origins:
+    cors_origins = ["*"]
+else:
+    for default_origin in ("https://secure-file-manager-dra6.vercel.app",):
+        if default_origin not in cors_origins:
+            cors_origins.append(default_origin)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.middleware("http")

@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,7 +21,12 @@ class Settings(BaseSettings):
 
     SQLALCHEMY_DATABASE_URL: str = Field(
         default="sqlite:///./app.db",
-        validation_alias="DATABASE_URL",
+        validation_alias=AliasChoices(
+            "DATABASE_URL",
+            "POSTGRES_URL",
+            "SQLALCHEMY_DATABASE_URL",
+            "POSTGRES_PRISMA_URL",
+        ),
     )
     STORAGE_BACKEND: Literal["local", "vercel_blob"] = "local"
     UPLOAD_DIR: Path = Field(
