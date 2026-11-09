@@ -1,6 +1,13 @@
-# Secure File Manager
+# Vaultline — Secure File Manager
 
-A browser-based file workspace for learning about file metadata and integrity. Users create an account, upload files, review MIME-type and extension information, and record SHA-256 checksums. File-list, download, and delete operations require a signed-in account and are restricted to that account's records.
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-vaultline--app.vercel.app-0070F3?style=for-the-badge&logo=vercel&logoColor=white)](https://vaultline-app.vercel.app)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.162.0-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Database](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://neon.tech)
+
+A browser-based secure file workspace for learning about file metadata and integrity. Users create an account, upload files, review MIME-type and extension information, and record SHA-256 checksums. File-list, download, and delete operations require a signed-in account and are restricted to that account's records.
+
+**Live Deployment:** [https://vaultline-app.vercel.app](https://vaultline-app.vercel.app)
 
 ## Important security limits
 
@@ -72,7 +79,7 @@ The root `main.py` exports the FastAPI app for Vercel's Python runtime. Vercel F
    | `DATABASE_URL` | Hosted PostgreSQL connection string |
    | `SECRET_KEY` | Unique random value with at least 32 characters |
    | `MAX_UPLOAD_SIZE_BYTES` | `4194304` |
-   | `ALLOWED_HOSTS` | Your exact `your-project.vercel.app` hostname and any custom domain, comma-separated |
+   | `ALLOWED_HOSTS` | Your exact `vaultline-app.vercel.app` hostname and any custom domain, comma-separated |
 
    Vercel provides `VERCEL` and the current `VERCEL_URL`. The app uses that deployment hostname for host validation; add custom domains to `ALLOWED_HOSTS`. Do not use `*`.
 5. Deploy from the Vercel dashboard. Open the resulting HTTPS URL, create an account, and test with two accounts to confirm each sees only its own files. The app creates its database tables on first start.
